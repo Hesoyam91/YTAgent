@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+darts
+langchain
+langchain-groq
+langchain-community
+langchain-core
+chromadb
+python-dotenv
+pandas
+torch
