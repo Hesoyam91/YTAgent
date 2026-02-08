@@ -1,37 +1,61 @@
+# backend/yt_service.py
 from ytmusicapi import YTMusic
 import os
 
 class YTMusicProvider:
-    def __init__(self, auth_file="backend/oauth.json"):
-        # Verificamos que el archivo exista antes de intentar cargar
-        if not os.path.exists(auth_file):
-            raise FileNotFoundError(f"❌ No se encontró el archivo de sesión en: {auth_file}")
-        
+    def __init__(self):
+        """Inicializa YT Music con diagnóstico"""
         try:
-            # IMPORTANTE: En versiones recientes, simplemente pasamos la ruta del archivo.
-            # ytmusicapi detectará si es OAuth por el contenido del JSON.
-            self.yt = YTMusic(auth_file)
-            print("✅ Autenticación OAuth cargada con éxito.")
+            oauth_path = os.path.join(os.path.dirname(__file__), 'oauth.json')
+            self.yt = YTMusic(oauth_path)
+            print("✅ Autenticación OAuth cargada")
+            self._diagnosticar()  # 👈 Añade esto
         except Exception as e:
-            print(f"❌ Error al inicializar YTMusic con OAuth: {e}")
-            raise
-
-    def get_user_vibe(self):
-        """
-        Extrae el historial reciente y los artistas favoritos 
-        para crear un 'perfil de humor' musical para la IA.
-        """
+            print(f"❌ Error inicializando YTMusic: {e}")
+            self.yt = None
+    
+    def _diagnosticar(self):
+        """Prueba qué endpoints funcionan"""
+        print("\n🔍 DIAGNÓSTICO DE PERMISOS:")
+        
+        # Test 1: Búsqueda (no requiere auth)
         try:
-            # Obtenemos historial y canciones que te gustan
+            search = self.yt.search("test", limit=1)
+            print(f"✅ search(): OK ({len(search)} resultados)")
+        except Exception as e:
+            print(f"❌ search(): {type(e).__name__}: {e}")
+        
+        # Test 2: Historial (requiere permisos)
+        try:
             history = self.yt.get_history()
-            liked_songs = self.yt.get_liked_songs(limit=5)
-            
-            # Formateamos un string limpio para el prompt de la IA
-            context = "Historial reciente: "
-            context += ", ".join([f"{t['title']} ({t['artists'][0]['name']})" for t in history[:10]])
-            
-            return context
+            print(f"✅ get_history(): OK ({len(history)} canciones)")
         except Exception as e:
-            return f"Error extrayendo datos de YT Music: {e}"
+            print(f"❌ get_history(): {type(e).__name__}: {e}")
         
+        # Test 3: Playlists de biblioteca
+        try:
+            playlists = self.yt.get_library_playlists(limit=5)
+            print(f"✅ get_library_playlists(): OK ({len(playlists)} playlists)")
+        except Exception as e:
+            print(f"❌ get_library_playlists(): {type(e).__name__}: {e}")
+        
+        # Test 4: Liked songs
+        try:
+            liked = self.yt.get_liked_songs(limit=1)
+            print(f"✅ get_liked_songs(): OK")
+        except Exception as e:
+            print(f"❌ get_liked_songs(): {type(e).__name__}: {e}")
+        
+        # Test 5: Artistas suscritos
+        try:
+            artists = self.yt.get_library_artists(limit=5)
+            print(f"✅ get_library_artists(): OK ({len(artists)} artistas)")
+        except Exception as e:
+            print(f"❌ get_library_artists(): {type(e).__name__}: {e}")
+        
+        print("━" * 50)
+    
+    def is_authenticated(self):
+        return self.yt is not None
+
 yt_provider = YTMusicProvider()
